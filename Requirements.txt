@@ -1,0 +1,7 @@
+alpaca_trade_api
+keras
+sklearn
+tensorflow
+pandas
+numpy
+pydot

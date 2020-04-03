@@ -1,0 +1,5 @@
+{
+  "key_id":"a-key-id",
+  "secret_key":"a-secret-key",
+  "base_url":"https://paper-api.alpaca.markets"
+}
