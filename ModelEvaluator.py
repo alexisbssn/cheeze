@@ -10,11 +10,11 @@ class ModelEvaluator:
         return y_predicted
 
     def plot(self, dataset: ModelTestingData):
-        y_test_predicted = self.predict(dataset.model, dataset.test_data, dataset.y_normaliser)
-        y_predicted = self.predict(dataset.model, dataset.train_data, dataset.y_normaliser)
+        y_test_predicted = self.predict(dataset.model, dataset.test_data, dataset.y_normalisers[0])
+        y_predicted = self.predict(dataset.model, dataset.train_data, dataset.y_normalisers[0])
 
-        unscaled_y_test = dataset.y_normaliser.inverse_transform(dataset.test_data.next_day_open_values)
-        unscaled_y_train = dataset.y_normaliser.inverse_transform(dataset.train_data.next_day_open_values)
+        unscaled_y_test = dataset.y_normalisers[0].inverse_transform(dataset.test_data.next_day_open_values.reshape(-1,1))
+        unscaled_y_train = dataset.y_normalisers[0].inverse_transform(dataset.train_data.next_day_open_values.reshape(-1,1))
 
         assert unscaled_y_test.shape == y_test_predicted.shape
         real_mse = np.mean(np.square(unscaled_y_test - y_test_predicted))
@@ -41,9 +41,9 @@ class ModelEvaluator:
             dataset.test_data.next_day_open_values)
         print("evaluation: " + str(evaluation))
 
-        y_test_predicted = self.predict(dataset.model, dataset.test_data, dataset.y_normaliser)
+        y_test_predicted = self.predict(dataset.model, dataset.test_data, dataset.y_normalisers[0])
 
-        unscaled_y_test = dataset.y_normaliser.inverse_transform(dataset.test_data.next_day_open_values)
+        unscaled_y_test = dataset.y_normalisers[0].inverse_transform(dataset.test_data.next_day_open_values.reshape(-1,1))
 
         assert unscaled_y_test.shape == y_test_predicted.shape
         real_mse = np.mean(np.square(unscaled_y_test - y_test_predicted))
@@ -51,9 +51,9 @@ class ModelEvaluator:
         print("scaled mean square error (test): " + str(scaled_mse))
 
         # also getting predictions for the entire dataset, just to see how it performs
-        y_predicted = self.predict(dataset.model, dataset.train_data, dataset.y_normaliser)
+        y_predicted = self.predict(dataset.model, dataset.train_data, dataset.y_normalisers[0])
 
-        unscaled_y_train = dataset.y_normaliser.inverse_transform(dataset.train_data.next_day_open_values)
+        unscaled_y_train = dataset.y_normalisers[0].inverse_transform(dataset.train_data.next_day_open_values.reshape(-1,1))
 
         assert unscaled_y_train.shape == y_predicted.shape
         real_mse = np.mean(np.square(unscaled_y_train - y_predicted))

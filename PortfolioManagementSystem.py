@@ -1,4 +1,4 @@
-from AlpacaPaperApi import AlpacaPaperApi
+from Alpaca.AlpacaPaperApi import AlpacaPaperApi
 from ModelRunner import ModelRunner
 import pandas as pd
 import numpy as np

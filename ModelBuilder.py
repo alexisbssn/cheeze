@@ -46,21 +46,43 @@ class ModelBuilder:
         return model
 
     def split_test_data(self, dataset: TransformedData, test_split: float):
-        n = int(dataset.stock_data.ohlcv_histories.shape[0] * test_split) # ohlcv_histories.shape looks like (1168, 50, 5)
 
-        ohlcv_train = dataset.stock_data.ohlcv_histories[:n]
-        tech_ind_train = dataset.stock_data.technical_indicators[:n]
-        next_day_train = dataset.stock_data.next_day_open_values[:n]
-        train_dataset = StockData(ohlcv_train, tech_ind_train, next_day_train)
+        tech_ind_dims = dataset.stock_data.technical_indicators.shape[1] # technical_indicators.shape looks like (1168, 5)
+        ohlcv_shape = dataset.stock_data.ohlcv_histories.shape
 
-        ohlcv_test = dataset.stock_data.ohlcv_histories[n:]
-        tech_ind_test = dataset.stock_data.technical_indicators[n:]
-        next_day_test = dataset.stock_data.next_day_open_values[n:]
-        test_dataset = StockData(ohlcv_test, tech_ind_test, next_day_test)
+        ohlcv_train = np.empty((0, ohlcv_shape[1], ohlcv_shape[2]))
+        tech_ind_train = np.empty((0, tech_ind_dims))
+        next_day_train = np.empty((0))
 
-        return ModelTestingData(None, train_dataset, test_dataset, dataset.y_normaliser)
+        ohlcv_test = np.empty((0, ohlcv_shape[1], ohlcv_shape[2]))
+        tech_ind_test = np.empty((0, tech_ind_dims))
+        next_day_test = np.empty((0))
 
-        
+        tech_ind_symbols_range = range(tech_ind_dims-1, tech_ind_dims - 1 - dataset.stock_data.symbols_count, -1)
+
+        for i in tech_ind_symbols_range:
+            this_symbol = np.empty((0, tech_ind_dims))
+            next_day = np.empty((0))
+            ohlcv = np.empty((0, ohlcv_shape[1], ohlcv_shape[2]))
+            for j in range(len(dataset.stock_data.technical_indicators)):
+                tech_inds =  dataset.stock_data.technical_indicators[j]
+                if tech_inds[i] == 1:
+                    this_symbol = np.append(this_symbol, tech_inds.reshape(1,-1), axis=0)
+                    next_day = np.append(next_day, dataset.stock_data.next_day_open_values[j], axis=0)
+                    ohlcv = np.append(ohlcv, dataset.stock_data.ohlcv_histories[j].reshape((1,ohlcv_shape[1], ohlcv_shape[2])), axis=0)
+
+            n = int(this_symbol.shape[0] * test_split) 
+            ohlcv_train = np.append(ohlcv_train, ohlcv[:n], axis=0)
+            tech_ind_train = np.append(tech_ind_train, this_symbol[:n], axis=0)
+            next_day_train = np.append(next_day_train, next_day[:n], axis=0)
+            ohlcv_test = np.append(ohlcv_test, ohlcv[n:], axis=0)
+            tech_ind_test = np.append(tech_ind_test, this_symbol[n:], axis=0)
+            next_day_test = np.append(next_day_test, next_day[n:], axis=0)
+
+        train_dataset = StockData(ohlcv_train, tech_ind_train, next_day_train, dataset.stock_data.symbols_count)
+        test_dataset = StockData(ohlcv_test, tech_ind_test, next_day_test, dataset.stock_data.symbols_count)
+        assert train_dataset.ohlcv_histories.shape[0] + test_dataset.ohlcv_histories.shape[0] == dataset.stock_data.ohlcv_histories.shape[0]
+        return ModelTestingData(None, train_dataset, test_dataset, dataset.y_normalisers)
 
 
     def build_model(self, dataset, epochs: int):

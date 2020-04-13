@@ -5,3 +5,4 @@ tensorflow
 pandas
 numpy
 pydot
+cond-rnn

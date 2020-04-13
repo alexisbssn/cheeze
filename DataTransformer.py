@@ -3,6 +3,61 @@ from sklearn import preprocessing
 import numpy as np
 import statistics
 from DataModels import *
+import category_encoders as ce
+
+def add_column(arr, index):
+    indices = np.zeros((arr.shape[0], 1))
+    indices[:,0] = index
+    return np.append(arr, indices, axis=1)
+
+def multi_csv_to_dataset(paths: [str]):
+    index = 0
+    y_normalizers = []
+    for path in paths:
+        index = index + 1
+        transformed_data = csv_to_dataset(path)
+        y_normalizers.append(transformed_data.y_normalisers[0])
+        symbol_data = transformed_data.stock_data
+
+        # add index column
+        indices_ohlcv = np.zeros((symbol_data.ohlcv_histories.shape[0], symbol_data.ohlcv_histories.shape[1], 1))
+        indices_ohlcv[:,:,0] = index
+        symbol_data.ohlcv_histories = np.append(symbol_data.ohlcv_histories, indices_ohlcv, axis=2)
+
+        indices_tech_ind = np.zeros((symbol_data.technical_indicators.shape[0], 1))
+        indices_tech_ind[:,0] = index
+        symbol_data.technical_indicators = np.append(symbol_data.technical_indicators, indices_tech_ind, axis=1)
+
+        if index == 1:
+            dataset = symbol_data
+        else:
+            dataset.technical_indicators = np.concatenate([dataset.technical_indicators, symbol_data.technical_indicators])
+            dataset.ohlcv_histories = np.concatenate([dataset.ohlcv_histories, symbol_data.ohlcv_histories])
+            dataset.next_day_open_values = np.concatenate([dataset.next_day_open_values, symbol_data.next_day_open_values])
+
+    dataset.symbols_count = 5#len(paths)
+
+    # swap the index column to one-hot multiple columns
+    ohe = preprocessing.OneHotEncoder()
+    ohe.fit(dataset.technical_indicators[:,-1].reshape(-1,1))
+
+    ohlcv_index_cols = np.zeros((dataset.ohlcv_histories.shape[0], dataset.ohlcv_histories.shape[1], 5))
+    ohlcv_index_cols[:,:,0] = 1
+
+    #ohlcv_index_cols = ohe.transform(dataset.ohlcv_histories[:,:,-1].reshape(-1,1)).toarray()\
+    #    .reshape(dataset.ohlcv_histories.shape[0], dataset.ohlcv_histories.shape[1], -1)
+
+    dataset.ohlcv_histories = np.delete(dataset.ohlcv_histories, -1, axis=2)
+    dataset.ohlcv_histories = np.append(dataset.ohlcv_histories, ohlcv_index_cols, axis=2)
+
+    #tech_ind_index_cols = ohe.transform(dataset.technical_indicators[:,-1].reshape(-1,1)).toarray().reshape(dataset.technical_indicators.shape[0],-1)
+    tech_ind_index_cols = np.zeros((dataset.technical_indicators.shape[0],5))
+    tech_ind_index_cols[:,0] = 1
+    dataset.technical_indicators = np.delete(dataset.technical_indicators, -1, axis=1)
+    dataset.technical_indicators = np.append(dataset.technical_indicators, tech_ind_index_cols, axis=1)
+
+    return TransformedData(dataset, y_normalizers, ohe)
+        
 
 def csv_to_dataset(csv_path):
     data = pd.read_csv(csv_path)
@@ -38,8 +93,8 @@ def csv_to_dataset(csv_path):
 
     # pylint: disable=E1136  # pylint/issues/3139
     assert ohlcv_histories_normalized.shape[0] == next_day_open_values_normalized.shape[0] == technical_indicators_normalised.shape[0]
-    stock_data = StockData(ohlcv_histories_normalized, technical_indicators, next_day_open_values_normalized)
-    return TransformedData(stock_data, y_normalizer)
+    stock_data = StockData(ohlcv_histories_normalized, technical_indicators, next_day_open_values_normalized, 1)
+    return TransformedData(stock_data, [y_normalizer], None)
 
 def get_technical_indicators(histories):
     def calc_ema(values, time_period):
