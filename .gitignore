@@ -3,3 +3,4 @@ models
 test_data
 alpaca_creds.json
 av_creds.json
+.vscode
